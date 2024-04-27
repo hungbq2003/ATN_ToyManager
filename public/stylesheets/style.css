@@ -1,0 +1,28 @@
+body {
+    padding: 50px;
+    font: 14px "Times New Roman", Times, sans-serif;
+}
+
+a {
+    color: blue;
+}
+
+.b {
+    color: cyan;
+}
+
+.center {
+    text-align: center;
+}
+
+.bold {
+    font-style: bold;
+}
+
+.italic {
+    font-style: italic;
+}
+
+.underline {
+    text-decoration: underline;    
+}

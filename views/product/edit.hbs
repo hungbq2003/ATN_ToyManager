@@ -1,0 +1,15 @@
+<br><br><br><br><br><br>
+<center>
+  <form action="/product/edit/{{product._id}}" method="post">
+    <h1>Edit Product</h1>
+    <label for="">Product Name</label><br>
+    <input class="form-control"type="text" name="name" style="text-align: center;" required="required"><br><br>
+    <label for="">Product Count</label><br>
+    <input class="form-control" type="number" name="count" min="0" max="200" required="required"><br><br>
+    <label for="">Product Price</label><br>
+    <input class="form-control" type="number" name="price" min="10" max="1000" required="required"><br><br>
+    <label for="">Product Image</label><br>
+    <input class="form-control" type="url" name="image"required="required"><br><br>
+    <input type="submit" style="color: white;background-color: green;width: 100px;" value="Edit">
+  </form>     
+</center>
