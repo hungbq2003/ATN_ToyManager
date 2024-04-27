@@ -55,10 +55,10 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-//Update port to deploy it to Render cloud
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}.`);
+// Listen on a dynamic port assigned by the environment or default to 3000
+var server = app.listen(process.env.PORT || 3001, function() {
+    var port = server.address().port;
+    console.log("App now running on port", port);
 });
 
 module.exports = app;
