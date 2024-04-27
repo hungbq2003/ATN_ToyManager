@@ -1,0 +1,2077 @@
+ATN Toy Manager - Guide on how the code snippets work
+I - Models
+1. Category Model (CategoryModel.js):
+Code:
+const mongoose = require('mongoose');
+const CategorySchema = mongoose.Schema(
+    {
+        id: String,
+        name: String,
+    }
+);
+
+const CategoryModel = mongoose.model('categories', CategorySchema);
+module.exports = CategoryModel;
+
+Purpose:
+Defines a Mongoose schema for storing product categories.
+
+Overview:
++ const mongoose = require('mongoose'); - imports the Mongoose library for interacting with the MongoDB.
++ const CategorySchema = mongoose.Schema({ ... }); - creates a schema named CategorySchema that defines the structure of a category document inside the database.
++ id: String, - used to define a property named id of type String to uniquely identify a category.
++ name: String, - used to define a property named name of type "String" in order to store the category's name (such as "Cars", "Dolls").
+
+Functionality:
+This schema serves as a blueprint for creating category documents in the categories collection of the ATN's MongoDB database.
+Mongoose enforces the defined data types (String in this case) when storing and retrieving category data.
+
+2. Customer Model (CustomerModel.js):
+Code:
+//Declare mongoose
+var mongoose = require('mongoose');
+//Declare schema (for table design/structure)
+var CustomerSchema = mongoose.Schema(
+   {
+      id: String,
+      name: String,
+      age: Number,   //integer
+      gender: String,
+      image: String
+   }
+);
+//Declare model (to be used in routes, as "controllers")
+var CustomerModel = mongoose.model("customers", CustomerSchema);  //students: collection name
+//Note: in case collection name is single form (without "s" at the end)
+//var StudentModel = mongoose.model("customer", CustomerSchema, "customer");
+//export module
+module.exports = CustomerModel;
+
+
+
+Purpose:
+Defines a Mongoose schema for storing customer information.
+
+Overview:
++ var mongoose = require('mongoose'); - imports Mongoose.
++ var CustomerSchema = mongoose.Schema({ ... }); - creates a "CustomerSchema" schema, which is used for customer documents.
++ id: String, - property for a unique customer identifier (String).
++ name: String, - property to store the customer's name (String).
++ age: Number, - property for the customer's current age (in Number; most likely an integer).
++ gender: String, - property to store the customer's gender (in Male or Female) (String).
++ image: String, - property for a URL or path to a customer image (String, optional).
++ var CustomerModel = mongoose.model("customers", CustomerSchema); - creates a "CustomerModel" Mongoose model, based on the CustomerSchema. The model name (customers) is used to specify the collection name in MongoDB where customer data will be automatically stored in "customers" collection of the ATN database.
+
+Functionality:
+This Customer schema defines the expected structure of customer's documents.
+A CustomerModel allows managers to interact with their customer data in the application with the use of Mongoose methods (using CRUD operations, or known as create, read, update, delete).
+
+3. Product Model (ProductModel.js):
+Code:
+const mongoose = require('mongoose');
+const ProductSchema = mongoose.Schema(
+    {
+        id: String,
+        name: String,
+        count: Number,
+        price: Number,
+        image: String,
+        categories: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'categories'
+        }
+    }
+)
+
+
+const ProductModel = mongoose.model('products', ProductSchema);
+module.exports = ProductModel;
+
+
+Purpose:
+Defines a Mongoose schema for storing product information and linking products to categories as well.
+
+Overview:
++ const mongoose = require('mongoose'); - imports Mongoose.
++ const schema = mongoose.Schema({ ... }); - creates a schema named schema for product documents.
++ id: String - property for a unique product identifier (String).
++ name: String - property to store an product's name (String).
++ count: Number - property to show the product's stock count (Number, in integer).
++ price: Number - property for a product's price (Number).
++ categories: { ... } - defines a nested object named "categories" to establish a relationship between products and categories.
++ type: mongoose.Schema.Types.ObjectId - specifies that the categories property should hold an ObjectId value.
++ ref: 'categories' - refers the categories collection (which are defined in CategoryModel.js) for creating a foreign key relationship. This will links a product to its corresponding category (such as Lego toys uses Lego category)
++ const productModel = mongoose.model('products', ProductSchema); - creates a "productModel" Mongoose model based on the schema. The model name (as "products") will be used to specify the collection name in MongoDB where product data will be stored.
+
+Functionality:
+This schema allows managers to store product details along with a reference to the category that the product belongs to.
+The categories property, along with its ObjectId type and ref directive enables managers to link products to their appropriate categories, thus establishing a relational data model.
+
+II - Routes
+1. customer.js
+Code:
+var express = require('express');
+const customerModel = require('../models/CustomerModel');
+var router = express.Router();
+
+//READ Feature, must use "async" and "await" keywords
+router.get('/', async (req, res) => {
+    var customerList = await customerModel.find({});
+    res.render('customer/index', { customerList });
+});
+
+//DELETE Feature
+router.get('/delete/:id', async (req, res) => {
+
+    let id = req.params.id;
+    await customerModel.findByIdAndDelete(id);
+    res.redirect('/customer');
+ })
+ 
+ router.get('/deleteall', async (req, res) => {
+   
+    await customerModel.deleteMany();
+    res.redirect('/customer');
+ })
+ 
+ //Step 1: Render "Add customer" form. Used for user to input data
+ router.get('/add', async (req, res) => {
+    res.render('customer/add');
+ })
+ 
+ //Step 2: Get input data from the form, then add data to database
+ router.post('/add', async (req, res) => {
+    var customer = req.body;
+    console.log(customer)
+    await customerModel.create(customer);
+    res.redirect('/customer');
+ })
+ 
+ router.get('/edit/:id', async (req, res) => {
+    var id = req.params.id;
+    var customer = await customerModel.findById(id);
+    console.log(customer)
+    res.render('customer/edit', { customer });
+ })
+ 
+ router.post('/edit/:id', async (req, res) => {
+    var id = req.params.id;
+    var customer = req.body;
+    await customerModel.findByIdAndUpdate(id,customer);
+    res.redirect('/customer');
+ })
+ 
+ //Show customer detail
+ router.get('/detail/:id', async (req, res) => {
+    let id = req.params.id;
+    var customer = await customerModel.findById(id);
+    res.render('customer/detail', { customer });
+ })
+ 
+ 
+ //Search by customer name
+ router.post('/search', async (req, res) => {
+    let keyword = req.body.keyword;
+    let customers = await customerModel.find({ name: new RegExp(keyword, "i") });
+    res.render('customer/index', { customerList : customers });
+ })
+ 
+ //Sort by customer ID (ascending)
+ router.get('/sortid/asc', async (req, res) => {
+    let customerList = await customerModel.find().sort({ name: 1 });
+    res.render('customer/index', { customerList });
+ })
+ 
+ //Sort by customer ID (Descending)
+ router.get('/sortid/desc', async (req, res) => {
+    let customerList = await customerModel.find().sort({ name: -1 });
+    res.render('customer/index', { customerList });
+ })
+ 
+ //Filter customer by male gender
+ router.get('/male', async (req, res) => {
+    let customerList = await customerModel.find({ gender : "male"});
+    res.render('customer/index', { customerList });
+ })
+ 
+ //Filter customer by female gender
+ router.get('/female', async (req, res) => {
+    let customerList = await customerModel.find({ gender: "female" });
+    res.render('customer/index', { customerList });
+ })
+ 
+ module.exports = router;
+
+"customer.js" is used to define routes specifically for managing customer data.
+
+Read All Customers:
++ router.get('/', async (req, res) => ... ): This route handles displaying a full list of customers saved in "customers" collection inside of ATN database. It uses async and/or await to perform asynchronous operations:
++ customerList = await customerModel.find({}) - fetches all customer documents from the customers collection by using customerModel.
++ res.render('customer/index', { customerList }) - renders the customer/index views, and then passes the customerList data to the template.
+
+Delete Features:
+These Delete features routes allow managers deleting either a customer (/delete/:id) or all of the customers (/deleteall). "findByIdAndDelete" or "deleteMany" methods can be used to remove data from the database and then redirect to the customer list view.
+
+Add/Edit/Detail:
+Routes are defined by  adding (/add), editing (/edit/:id), and viewing details (/detail/:id) of a selected customer. They involve:
++ Retrieving data from the form (req.body), for adding/editing.
++ Use findById or findByIdAndUpdate methods of customerModel to interact with the database.
++ Rendering appropriate views (customer/add, customer/edit, customer/detail) with fetched or updated customer data informations.
+
+Search and Sort:
+Routes handle searching by name (/search) and sorting by ID (either in ascending [/sortid/asc] or descending [/sortid/desc]). They use regular expressions for name search and sorting options with customerModel.find
+
+Filter by Gender:
+Separate routes for each gender (/male and /female) are used to filter customers based on their gender stored in the gender property.
+
+2. index.js
+Code:
+var express = require('express');
+const productModel = require('../models/ProductModel');
+var router = express.Router();
+const categoryModel = require('../models/CategoryModel');
+
+router.get('/', async (req, res) => {
+  var productList = await productModel.find({});
+  var categories = await categoryModel.find({});
+  res.render('index', { productList,categories });
+});
+
+router.get('/filter/:id',async (req,res) => {
+  var id = req.params.id;
+  var productList = await productModel.find({categories:id})
+  var categories = await categoryModel.find({});
+  res.render('index', { productList,categories });
+})
+
+module.exports = router;
+
+
+"index.js" is defined for the product list view and filtering by category.
++ List Products and Categories:
+router.get('/', async (req, res) => ... ) - fetches all products and categories, using productModel and categoryModel. It renders the index view with both data of "productList" and "categories".
++ Filter by Category:
+router.get('/filter/:id',async (req,res) => ... ) - retrieves products belonging to a specific category based on the id parameter. It also renders the index view with filtered productList and all categories.
+
+3. product.js
+Code:
+var express = require('express');
+const productModel = require('../models/ProductModel');
+var router = express.Router();
+const categoryModel = require('../models/CategoryModel');
+
+//READ feature
+//Importance: Must use "async" + await" keywords
+router.get('/', async (req, res) => {
+   const productList = await productModel.find({}).populate('categories');
+   res.render('product/index', { productList });
+});
+
+//DELETE feature
+router.get('/delete/:id', async (req, res) => {
+   let id = req.params.id;
+   await productModel.findByIdAndDelete(id);
+   res.redirect('/product');
+})
+
+router.get('/deleteall', async (req, res) => {
+   await productModel.deleteMany();
+   res.redirect('/product');
+})
+
+//step 1: render "Add product" form for user to input data
+router.get('/add', async (req, res) => {   
+   var categories = await categoryModel.find({});
+   res.render('product/add',{ categories });
+})
+
+//step 2: get input data from form and add data to database
+router.post('/add', async (req, res) => {
+   var product = req.body;
+   console.log(product);
+   await productModel.create(product);
+   res.redirect('/product');
+})
+
+router.get('/edit/:id', async (req, res) => {
+   var id = req.params.id;
+   var product = await productModel.findById(id);
+   res.render('product/edit', { product });
+})
+
+router.post('/edit/:id', async (req, res) => {
+   var id = req.params.id;
+   var product = req.body;
+   await productModel.findByIdAndUpdate(id,product);
+   res.redirect('/product');
+})
+
+
+//search by product name
+router.post('/search', async (req, res) => {
+   let keyword = req.body.keyword;
+   let products = await productModel.find({ name: new RegExp(keyword, "i") }).populate('categories');
+   res.render('product/index', { productList : products });
+})
+
+//sort by product id ascending
+router.get('/sortid/asc', async (req, res) => {
+   let productList = await productModel.find().sort({ name: 1 }).populate('categories');
+   res.render('product/index', { productList });
+})
+
+//sort by product id descending
+router.get('/sortid/desc', async (req, res) => {
+   let productList = await productModel.find().sort({ name: -1 }).populate('categories');
+   res.render('product/index', { productList });
+})
+
+module.exports = router;
+
+
+This file defines routes for managing product data, similar to customer.js:
+
+Read All Products (Populated):
++ router.get('/', async (req, res) => ... ) - Fetches all products and populates the categories property using populate('categories'). This ensures retrieving category details along with product data. The productList is then rendered in the product/index view.
++ Delete, Add, Edit: Routes handle deleting, adding, and editing products. They all use similar logic as customer.js for interacting with productModel and rendering views.
++ Search, Sort, and Filtering: Similar functionalities are implemented for searching by name, sorting by ID, and filtering by populated category data using populate('categories') in the queries.
+
+4. users.js
+Code:
+var express = require('express');
+var router = express.Router();
+
+/* GET users listing */
+router.get('/', function(req, res, next) {
+    res.send('respond with a resource')
+});
+
+module.exports = router;
+
+This file is used to define and get users listing.
+
+III - views: customer
+1. add (Add Customer Form):
+Code:
+<br><br><br><br><br><br>
+<center>
+  <form action="/customer/add" method="post">
+    <h1>Add new customer</h1>
+    <label for="">Name</label><br>
+    <input class="form-control"type="text" style="text-align: center;" name="name" required="required"><br><br>
+    <label for="">Age</label><br>
+    <input class="form-control" type="number" name="age" min="10" max="99" required="required"><br><br>
+    <label for="">Gender</label><br> 
+    <select id="gender" name="gender" required="required">
+      <option value="male" selected="select">Male</option>
+      <option value="female" >Female</option>
+    </select>
+    <br><br>
+    <label for="">Image</label><br>
+    <input class="form-control" type="url" name="image" required="required"><br><br>
+    <input type="submit" style="color: white;background-color: gold;width: 100px;"  value="Add">
+  </form>
+</center>
+
++ "add" in customer view form is used to display a form for adding a new customer. Users can enter details such as: name, age (from 10-99 yrs old), gender (select Male or Female from a dropdown), and their customer image URL. Then, the form submits data with the POST method to the /customer/add route for processing.
+
+2. edit (Edit Customer Form):
+Code:
+<br><br><br><br><br><br>
+<center>
+  <form action="/customer/edit/{{customer._id}}" method="post">
+    <h1>Edit customer</h1>
+   <label for="">Name</label><br>
+   <input type="text" name="name" style="text-align: center;" value="{{ customer.name }}" required="required">
+   <br><br>
+   <label for="">Age</label><br>
+   <input type="number" name="age" style="text-align: center;" value="{{ customer.age }}" required="required">
+   <br><br>
+    <label for="">Gender</label><br> 
+    <select id="gender" name="gender" required="required">
+      <option value="male">Male</option>
+      <option value="female" >Female</option>
+    </select>
+    <br><br>
+    <label for="">Image</label><br>
+   <input type="url" name="image"  style="text-align: center;" value="{{ customer.image }}" required="required">
+    <br><br>
+    <input type="submit" style="color: white;background-color: gold;width: 100px;"  value="Edit">
+  </form>
+</center>
+
++ "edit" in customer view form displays a form pre-populated with existing customer data retrieved from the database for the users/managers to modify them.
++ The template likely receives customer data as an object ({{customer}}) from the route handler.
++ Users can change/update their customer details like name, age, gender (dropdown), and customer image URL.
++ The form submits data with the POST method to the /customer/edit/:id route (where :id is the customer's ID) for updating a customer information.
+
+3. index (Customer List):
+Code:
+<br><br><br><br><br><br>
+<center>
+    <a class="btn btn-outline-success me-2" href="/customer/add">Add new customer</a>
+    <a class="btn btn-outline-danger me-2" href="/admin/deleteall" onclick="return confirm('Erase all customers? All of the customers and their data will be deleted. You can't undo this action.');">Erase all customers</a>
+</center>
+
+<center>
+   <center>
+      <a class="btn btn-info" href="/customer/sortid/asc">
+         Sort by ID Ascending
+      </a>
+      <a class="btn btn-warning" href="/customer/sortid/desc">
+         Sort by ID Descending
+      </a>
+      <a class="btn btn-danger" href="/customer/male">
+         Male
+      </a>
+      <a class="btn btn-primary" href="/customer/female">
+         Female
+      </a>
+   </center>
+   <br>
+   <center>
+      <form action="/customer/search" method="post">
+         <input class="form-control" type="search" name="keyword" id="" required placeholder="Search by name">
+      </form>
+</center>
+<br>
+
+<table class="table table-info">
+   <tr>
+      <th style="color: rgb(128,128,128); width: 150px;"></th>
+      <th style="color: rgb(128,128,128); width: 200px;">customer ID</th>
+      <th style="color: rgb(128,128,128); width: 100px;">Name</th>
+      <th style="color: rgb(128,128,128); width: 100px;">Age</th>
+      <th style="color: rgb(128,128,128); width: 100px;">Gender</th>
+      <th style="color: rgb(128,128,128); width: 200px;">Image</th>
+      <th style="color: rgb(128,128,128); width: 300px;">Menu</th>
+   </tr>
+   {{#each customerList }}
+   <tr>
+      <td style="color: rgb(128,128,128); width: 150px;text-align: center;"></td>
+      <td style="color: rgb(128,128,128); width: 200px;text-align: center;">{{ _id }}</td>
+      <td style="color: rgb(128,128,128); width: 100px;text-align: center;">{{ name }}</td>
+      <td style="color: rgb(128,128,128); width: 100px;text-align: center;">{{ age }}</td>
+      <td style="color: rgb(128,128,128); width: 100px;text-align: center;">{{ gender }}</td>
+      <td style="color: rgb(128,128,128); width: 200px;text-align: center;">
+            <img src="{{ image }}" width="100" height="100">
+      </td>
+      <td style="color: rgb(128,128,128); width: 300px;text-align: center;">
+         <a class="btn btn-warning" href="/customer/edit/{{ _id }}">Edit</a>
+         <a class="btn btn-danger" href="/customer/delete/{{ _id }}"
+            onclick="return confirm('Delete this customer?');">Delete customer</a>
+      </td>
+   </tr>
+   {{/each}}
+
+</table>
+
++ This "index" in customer view displays a list of all customers (including each customers' details) in a table format, including an button to adding new customer and button to delete  all customers (with confirmation).
++ Sorting buttons allow sorting by customer ID, in ascending or descending order.
+Additional buttons filter the list and display only male or female customers.
++ A search bar allows user to search customers by name using a form that submits data to the /customer/search route. The table iterates through a list of customers ({{customerList}}) passed from the route handler and displays their details as follows:
+ID ({{ _id }})
+Name ({{ name }})
+Age ({{ age }})
+Gender ({{ gender }})
+Image (displayed using an <img> tag with the {{ image }} URL)
+The Edit button is used for updating information of a customer (/customer/edit/:id) and Delete buttons to delete either the selected customer or delete all (/customer/delete/:id with confirmation)
+
+IV - views: product
+1. add (Add Product Form):
+Code:
+<br><br><br><br><br><br>
+<center>
+  <form action="/product/add" method="post">
+    <h1>Add Product</h1>
+    <label for="">Product Name</label><br>
+    <input class="form-control"type="text" name="name" style="text-align: center;" required="required"><br><br>
+    <label for="">Product Count</label><br>
+    <input class="form-control" type="number" name="count" min="0" max="200" required="required"><br><br>
+    <label for="">Product Price</label><br>
+    <input class="form-control" type="number" name="price" min="10" max="1000" required="required"><br><br>
+    <label for="">Product Image</label><br>
+    <input class="form-control" type="url" name="image"required="required"><br><br>
+    <label for="">Category</label><br>
+    <select name="categories" id="" required="required">
+      {{#each categories }}
+      <option value="{{ _id }}">{{ name }}</option>
+      {{/each}}
+    </select>
+    <br><br>
+    <input type="submit" style="color: white;background-color: green;width: 100px;" value="Add">
+  </form>    
+</center>
+
++ The "add" in product form view displays a form for adding a new product. Users can enter details like product name, count (with a range of 0-200), price (with a range of 10-1000), and image URL.
++ A dropdown menu populated with a list of categories ({{#each categories}} ... {{/each}}) allows selecting a category using the category ID ({{ _id }}).
++ The form submits data using the POST method to the /product/add route for processing.
+
+2. edit (Edit Product Form):
+Code:
+<br><br><br><br><br><br>
+<center>
+  <form action="/product/edit/{{product._id}}" method="post">
+    <h1>Edit Product</h1>
+    <label for="">Product Name</label><br>
+    <input class="form-control"type="text" name="name" style="text-align: center;" required="required"><br><br>
+    <label for="">Product Count</label><br>
+    <input class="form-control" type="number" name="count" min="0" max="200" required="required"><br><br>
+    <label for="">Product Price</label><br>
+    <input class="form-control" type="number" name="price" min="10" max="1000" required="required"><br><br>
+    <label for="">Product Image</label><br>
+    <input class="form-control" type="url" name="image"required="required"><br><br>
+    <input type="submit" style="color: white;background-color: green;width: 100px;" value="Edit">
+  </form>     
+</center>
+
++ This view displays a form pre-populated with existing product data retrieved from the database.
++ The template likely receives product data as an object ({{product}}) from the route handler.
++ Users can modify details like name, count, price, image URL, and the category selection remains available.
++ The form submits data using the POST method to the /product/edit/:id route (where :id is the product's ID) for updating the product information.
+
+3. index (Product List):
+Code:
+<br><br><br><br><br><br>
+
+<center>
+   <a class="btn btn-primary mb-3" href="/product/add">Add new toy</a>
+   <a class="btn btn-success" href="/product/deleteall"
+      onclick="return confirm('Erase all products? All products and their data will be deleted. You can't undo this action.');">Erase all products</a>
+</center>
+
+<center>
+   <a class="btn btn-info" href="/product/sortid/asc">
+         Sort by ID Ascending
+   </a>
+   <a class="btn btn-warning" href="/product/sortid/desc">
+         Sort by ID Descending
+   </a>
+</center>
+<br>
+<center class="row mt-3 mb-3">
+      <form action="/product/search" method="post">
+         <input class="form-control" type="search" name="keyword" id="" style="height: 50px;border-color: aqua;" required placeholder="Search by product name">
+      </form>
+</center>
+<table class="table table-info">
+   <tr>
+      <th style="color: rgb(128,128,128); width: 142px;"></th>
+      <th style="color: rgb(128,128,128); width: 200px;">ID</th>
+      <th style="color: rgb(128,128,128); width: 100px;">Name</th>
+      <th style="color: rgb(128,128,128); width: 100px;">Count</th>
+      <th style="color: rgb(128,128,128); width: 50px;">Price</th>
+      <th style="color: rgb(128,128,128); width: 200px;">Image</th>
+      <th style="color: rgb(128,128,128); width: 100px;">Category</th>
+      <th style="color: rgb(128,128,128); width: 300px;">Menu</th>
+   </tr>
+   {{#each productList }}
+   <tr>
+      <td style="color: rgb(128,128,128); width: 142px;"></td>
+      <td style="color: rgb(128,128,128); width: 200px;text-align:center">{{ _id }}</td>
+      <td style="color: rgb(128,128,128); width: 100px;text-align:center">{{ name }}</td>
+      <td style="color: rgb(128,128,128); width: 100px;text-align:center">{{ count }}</td>
+      <td style="color: rgb(128,128,128); width: 50px;text-align:center">
+         {{ price }}
+      </td>
+      <td style="color: rgb(128,128,128); width: 200px;text-align:center">
+          <img src="{{ image }}" width="100" height="100">
+      </td>
+      <td style="color: rgb(128,128,128); width: 100px;text-align:center">
+         {{ categories.name }}
+      </td>
+      <td style="color: rgb(128,128,128); width: 300px;text-align:center">
+         <a class="btn btn-warning" href="/product/edit/{{ _id }}">Edit</a>
+         <a class="btn btn-danger" href="/product/delete/{{ _id }}"
+            onclick="return confirm('Delete this product?');">Delete product</a>
+      </td>
+   </tr>
+   {{/each}}
+
+</table>
+
++ The product's "index" view is used to display a list of all products available in a table format. It includes buttons for adding a new product and deleting all products (with confirmation).
++ Sorting buttons allow sorting by product ID (ascending/descending).
++ A search bar enables searching for products by name using a form that submits data to the /product/search route.
+The table iterates through a list of products ({{productList}}) passed from the route handler and displays their details:
+ID ({{ _id }})
+Name ({{ name }})
+Count ({{ count }})
+Price ({{ price }})
+Image (displayed using an <img> tag with the {{ image }} URL)
+Category Name ({{ categories.name }}) - This is used to assume the product data includes a nested categories object with a name property for the associated category.
+The Edit button is used for updating information of a product (/product/edit/:id) and Delete buttons to delete either the selected product or delete all of them (/product/delete/:id with confirmation)
+
+This combination of views provides a user interface for managing product data in the ATN Toy Manager application.
+
+V - views: other functions
+1. error.hbs: Used to display an error message on the web page, which uses Handlebars syntax ({{message}}, {{error.status}}, {{error.stack}}) to dynamically insert the error code and error's details.
+error.hbs Code:
+<h1>{{message}}</h1>
+<h2>{{error.status}}</h2>
+<pre>{{error.stack}}</pre>
+
+2. index.hbs: Main layout of the website. It include the following functionalities:
+Links for external resources, such as Bootstrap CSS (https://unpkg.com/swiper/swiper-bundle.min.css), Font Awesome icons (https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css), and Google Fonts (https://fonts.googleapis.com/css2?family=Nunito:wght@200;300;400;600;700&display=swap).
++ Defines global styles like fonts, colors, and basic formatting
++ Creates a navigation bar with a logo, links, and a search bar
++ A placeholder section (<br><br><br><br><br><br><br><br><br><br>) which likely gets replaced with content from other views.
+index.hbs Code
+
+<!DOCTYPE html>
+<html>
+
+<head>
+   <link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+
+</head>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@200;300;400;600;700&display=swap');
+:root{
+  --blue: #1717dc;
+}
+.product-description {
+  word-wrap: break-word;
+}
+*{
+  font-family: 'Times New Roman', sans-serif;
+  margin:0; padding:0;
+  box-sizing: border-box;
+  outline: none; border:none;
+  text-decoration: none;
+  transition: all .2s linear;
+}
+*::selection{
+  background:var(--blue);
+  color:#fff;
+}
+html{
+  font-size: 62.5%;
+  overflow-x: hidden;
+  scroll-padding-top: 6rem;
+  scroll-behavior: smooth;
+}
+section{
+  padding:2rem 9%;
+}
+.heading{
+  text-align: center;
+  padding:2.5rem 0
+}
+.heading span{
+  font-size: 3.5rem;
+  background:rgba(255, 166, 0, 0.571);
+  color:var(--blue);
+  border-radius: .5rem;
+  padding:.2rem 1rem;
+}
+.heading span.space{
+  background:none;
+}
+.btn{
+  display: inline-block;
+  margin-top: 1rem;
+  background:var(--blue);
+  color:#fff;
+  padding:.8rem 3rem;
+  border:.2rem solid var(--blue);
+  cursor: pointer;
+  font-size: 1.7rem;
+}
+.btn:hover{
+  background:rgba(255, 166, 0, 0.571);
+  color:var(--blue);
+}
+header{
+  position: fixed;
+  top:0; left: 0; right:0;
+  background:#333;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding:2rem 9%;
+}
+header .logo{
+  font-size: 2.5rem;
+  font-weight: bolder;
+  color:#fff;
+  text-transform: uppercase;
+}
+header .logo span{
+  color:var(--blue);
+}
+header .navbar a{
+  color:#fff;
+  font-size: 2rem;
+  margin:0 .8rem;
+}
+header .navbar a:hover{
+  color:var(--blue);
+}
+header .icons i{
+  font-size: 2.5rem;
+  color:#fff;
+  cursor: pointer;
+  margin-right: 2rem;
+}
+header .icons i:hover{
+  color:var(--blue);
+}
+header .search-bar-container{
+  position: absolute;
+  top:100%; left: 0; right:0;
+  padding:1.5rem 2rem;
+  background:#333;
+  border-top: .1rem solid rgba(255,255,255,.2);
+  display: flex;
+  align-items: center;
+  z-index: 1001;
+  clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+}
+header .search-bar-container.active{
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+}
+header .search-bar-container #search-bar{
+  width:100%;
+  padding:1rem;
+  text-transform: none;
+  color:#333;
+  font-size: 1.7rem;
+  border-radius: .5rem;
+}
+header .search-bar-container label{
+  color:#fff;
+  cursor: pointer;
+  font-size: 3rem;
+  margin-left: 1.5rem;
+}
+header .search-bar-container label:hover{
+  color:var(--blue);
+}
+.login-form-container{
+  position: fixed;
+  top:-120%; left: 0;
+  z-index: 10000;
+  min-height: 100vh;
+  width:100%;
+  background:rgba(0,0,0,.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-form-container.active{
+  top:0;
+}
+.login-form-container form{
+  margin:2rem;
+  padding:1.5rem 2rem;
+  border-radius: .5rem;
+  background:#fff;
+  width:50rem;
+}
+.login-form-container form h3{
+  font-size: 3rem;
+  color:#444;
+  text-transform: uppercase;
+  text-align: center;
+  padding:1rem 0;
+}
+.login-form-container form .box{
+  width:100%;
+  padding:1rem;
+  font-size: 1.7rem;
+  color:#333;
+  margin:.6rem 0;
+  border:.1rem solid rgba(0,0,0,.3);
+  text-transform: none;
+}
+.login-form-container form .box:focus{
+  border-color: var(--blue);;
+}
+.login-form-container form #remember{
+  margin:2rem 0;
+}
+.login-form-container form label{
+  font-size: 1.5rem;
+}
+.login-form-container form .btn{
+  display: block;
+  width:100%;
+}
+.login-form-container form p{
+  padding:.5rem 0;
+  font-size: 1.5rem;
+  color:#666;
+}
+.login-form-container form p a{
+  color:var(--blue);
+}
+.login-form-container form p a:hover{
+  color:#333;
+  text-decoration: underline;
+}
+.login-form-container #form-close #form-close2{
+  position: absolute;
+  top:2rem; right:3rem;
+  font-size: 5rem;
+  color:#fff;
+  cursor: pointer;
+}
+#menu-bar{
+  color:#fff;
+  border:.1rem solid #fff;
+  border-radius: .5rem;
+  font-size: 3rem;
+  padding:.5rem 1.2rem;
+  cursor: pointer;
+  display: none;
+}
+.home{
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-flow: column;
+  position: relative;
+  z-index: 0;
+}
+.home .content{
+  text-align: center;
+}
+.home .content h3{
+  font-size: 4.5rem;
+  color:#fff;
+  text-transform: uppercase;
+  text-shadow: 0 .3rem .5rem rgba(0,0,0,.1);
+}
+.home .content p{
+  font-size: 2.5rem;
+  color:#fff;
+  padding:.5rem 0;
+}
+.home .video-container video{
+  position: absolute;
+  top:0; left: 0;
+  z-index: -1;
+  height: 100%;
+  width:100%;
+  object-fit: cover;
+}
+.home .controls{
+  padding:1rem;
+  border-radius: 5rem;
+  background:rgba(0,0,0,.7);
+  position: relative;
+  top:10rem;
+}
+.home .controls .vid-btn{
+  height:2rem;
+  width:2rem;
+  display: inline-block;
+  border-radius: 50%;
+  background:#fff;
+  cursor: pointer;
+  margin:0 .5rem;
+}
+.home .controls .vid-btn.active{
+  background:var(--blue);
+}
+.book .row{
+  display: flex;
+  flex-wrap: wrap;
+  gap:1.5rem;
+  align-items: center;
+}
+.book .row .image{
+  flex:1 1 40rem;
+}
+.book .row .image img{
+  width:100%;
+}
+.book .row form{
+  flex:1 1 40rem;
+  padding:2rem;
+  box-shadow: 0 1rem 2rem rgba(0,0,0,.1);
+  border-radius: .5rem;
+}
+.book .row form .inputBox{
+  padding:.5rem 0;
+}
+.book .row form .inputBox input{
+  width:100%;
+  padding:1rem;
+  border:.1rem solid rgba(0,0,0,.1);
+  font-size: 1.7rem;
+  color:#333;
+  text-transform: none;
+}
+.book .row form .inputBox h3{
+  font-size: 2rem;
+  padding:1rem 0;
+  color:#666;
+}
+.packages .box-container{
+  display: flex;
+  flex-wrap: wrap;
+  gap:2rem;
+}
+.packages .box-container .box{
+  flex:1 1 30rem;
+  border-radius: .5rem;
+  overflow: hidden;
+  box-shadow: 0 1rem 2rem rgba(0,0,0,.1);
+}
+.packages .box-container .box img{
+  height: 25rem;
+  width:2rem;
+  object-fit: cover;
+}
+.packages .box-container .box .content{
+  padding:2rem;
+}
+.packages .box-container .box .content h3{
+  font-size:2rem;
+  color:#333;
+}
+.packages .box-container .box .content h3 i{
+  color:var(--blue);
+}
+.packages .box-container .box .content p{
+  font-size:1.7rem;
+  color:#666;
+  padding:1rem 0;
+}
+.packages .box-container .box .content .stars i{
+  font-size:1.7rem;
+  color:var(--blue);
+}
+.packages .box-container .box .content .price{
+  font-size: 2rem;
+  color:#333;
+  padding-top: 1rem;
+}
+.packages .box-container .box .content .price span{
+  color:#666;
+  font-size: 1.5rem;
+  text-decoration: line-through;
+}
+.services .box-container{
+  display: flex;
+  flex-wrap: wrap;
+  gap:1.5rem;
+}
+.services .box-container .box{
+  flex: 1 1 30rem;
+  border-radius: .5rem;
+  padding:1rem;
+  text-align: center;
+}
+.services .box-container .box i{
+  padding:1rem;
+  font-size: 5rem;
+  color:var(--blue);
+}
+.services .box-container .box h3{
+  font-size: 2.5rem;
+  color:#333;
+}
+.services .box-container .box p{
+  font-size: 1.5rem;
+  color:#666;
+  padding:1rem 0;
+}
+.services .box-container .box:hover{
+  box-shadow: 0 1rem 2rem rgba(0,0,0,.1);
+}
+.gallery .box-container{
+  display: flex;
+  flex-wrap: wrap;
+  gap:1.5rem;
+}
+.gallery .box-container .box{
+  overflow: hidden;
+  box-shadow: 0 1rem 2rem rgba(0,0,0,.1);
+  border:1rem solid #fff;
+  border-radius: .5rem;
+  flex:1 1 30rem;
+  height: 25rem;
+  position: relative;
+}
+.gallery .box-container .box img{
+  height: 100%;
+  width:100%;
+  object-fit: cover;
+}
+.gallery .box-container .box .content{
+  position: absolute;
+  top:-100%; left:0;
+  height: 100%;
+  width:100%;
+  text-align: center;
+  background:rgba(0,0,0,.7);
+  padding:2rem;
+  padding-top: 5rem;
+}
+.gallery .box-container .box:hover .content{
+  top:0;
+}
+.gallery .box-container .box .content h3{
+  font-size: 2.5rem;
+  color:var(--blue);
+}
+.gallery .box-container .box .content p{
+  font-size: 1.5rem;
+  color:#eee;
+  padding:.5rem 0;
+}
+.review .review-slider{
+  padding-bottom: 2rem;
+}
+.review .box{
+  padding:2rem;
+  text-align: center;
+  box-shadow: 0 1rem 2rem rgba(0,0,0,.1);
+  border-radius: .5rem;
+}
+.review .box img{
+  height:13rem;
+  width:13rem;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 1rem;
+}
+.review .box h3{
+  color:#333;
+  font-size: 2.5rem;
+}
+.review .box p{
+  color:#666;
+  font-size: 1.5rem;
+  padding:1rem 0;
+}
+.review .box .stars i{
+  color:var(--blue);
+  font-size: 1.7rem;
+}
+.contact .row{
+  display: flex;
+  flex-wrap: wrap;
+  gap:1.5rem;
+  align-items: center;
+}
+.contact .row .image{
+  flex:1 1 35rem;
+}
+.contact .row .image img{
+  width:100%;
+}
+.contact .row form{
+  flex:1 1 50rem;
+  padding:2rem;
+  box-shadow: 0 1rem 2rem rgba(0,0,0,.1);
+  border-radius: .5rem;
+}
+.contact .row form .inputBox{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.contact .row form .inputBox input, .contact .row form textarea{
+  width:49%;
+  margin:1rem 0;
+  padding:1rem;
+  font-size: 1.7rem;
+  color:#333;
+  background:#f7f7f7;
+  text-transform: none;
+}
+.contact .row form textarea{
+  height: 15rem;
+  resize: none;
+  width:100%;
+}
+.brand-container{
+  text-align: center;
+}
+.footer{
+  background:#333;
+}
+.footer .box-container{
+  display: flex;
+  flex-wrap: wrap;
+  gap:1.5rem;
+}
+.footer .box-container .box{
+  padding:1rem 0;
+  flex:1 1 25rem;
+}
+.footer .box-container .box h3{
+  font-size: 2.5rem;
+  padding:.7rem 0;
+  color:#fff;
+}
+.footer .box-container .box p{
+  font-size: 1.5rem;
+  padding:.7rem 0;
+  color:#eee;
+}
+.footer .box-container .box a{
+  display: block;
+  font-size: 1.5rem;
+  padding:.7rem 0;
+  color:#eee;
+}
+.footer .box-container .box a:hover{
+  color:var(--blue);
+  text-decoration: underline;
+}
+.footer .credit{
+  text-align: center;
+  padding:2rem 1rem;
+  margin-top: 1rem;
+  font-size: 2rem;
+  font-weight: normal;
+  color:#fff;
+  border-top: .1rem solid rgba(255, 166, 0, 0.571);
+}
+.footer .credit span{
+  color:var(--blue);
+}
+/* media queries  */
+@media (max-width:1200px){
+  html{
+    font-size: 55%;
+  }
+}
+@media (max-width:991px){
+  header{
+    padding:2rem;
+  }
+  section{
+    padding:2rem;
+  }
+}
+@media (max-width:768px){
+  #menu-bar {
+    display: initial;
+  }
+  header .navbar{
+    position: absolute;
+    top:100%; right:0; left: 0;
+    background: #333;
+    border-top: .1rem solid rgba(255,255,255,.2);
+    padding:1rem 2rem;
+    clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+  }
+  header .navbar.active{
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+  header .navbar a{
+    display: block;
+    border-radius: .5rem;
+    padding:1.5rem;
+    margin:1.5rem 0;    
+    background:#222;
+  }
+}
+@media (max-width:450px){
+  html{
+    font-size: 50%;
+  }
+  .heading span{
+    font-size: 2.5rem;
+  }
+  .contact .row form .inputBox input{
+    width:100%;
+  }
+}
+</style>
+<br><br><br><br><br><br><br><br><br><br>
+<section class="packages" id="packages">
+    <h1 class="heading">
+        <span>A</span>
+        <span>T</span>
+        <span>N</span> 
+    </h1>
+    <center>
+            <span>
+                <a class="btn btn-primary mb-3" style="background-color: cyan;" href="/">ALL</a>
+            </span>
+        {{#each categories }}
+            <span>
+                <a class="btn btn-primary mb-3" style="background-color: cyan;" href="/filter/{{_id}}">{{ name }}</a>
+            </span>
+        {{/each}}
+    </center>
+    <br><br>
+<div class="box-container">
+         {{#each productList }}
+                <div class="box" style="height: 450px;max-width: 300px">
+                    <img src="{{ image }}" style="width: 100%;align-items: center;justify-items: center;" alt="Empty Image">
+                    <div class="content">
+                        <h1><span>{{name}}</span> </h1>
+                        <div class="stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="far fa-star"></i>
+                        </div>
+                         <h3 style="font-weight: normal"> ${{price}}</h3>
+                        <h4 style="font-weight: normal"> Product sold:{{count}}</h4>
+                        <a href="#" class="btn">Buy Now</a>
+                    </div>
+               </div> 
+          {{/each}}
+</div>
+</section>
+
+3. layout.hbs: This is used as a template for the other views of the application. It includes:
++ Links the same external resources just like index.hbs.
++ Defines global styles.
++ Set-up basic website structure including the header, navigation, and content sections.
+layout.hbs code:
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title> Toy Web</title>
+   <link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    
+</head>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@200;300;400;600;700&display=swap');
+
+:root{
+  --blue: #1717dc;
+}
+
+.product-description {
+  word-wrap: break-word;
+}
+
+*{
+  font-family: 'Times New Roman', sans-serif;
+  margin:0; padding:0;
+  box-sizing: border-box;
+  outline: none; border:none;
+  text-decoration: none;
+  transition: all .2s linear;
+}
+
+*::selection{
+  background:var(--blue);
+  color:#fff;
+}
+
+html{
+  font-size: 62.5%;
+  overflow-x: hidden;
+  scroll-padding-top: 6rem;
+  scroll-behavior: smooth;
+}
+
+section{
+  padding:2rem 9%;
+}
+
+.heading{
+  text-align: center;
+  padding:2.5rem 0
+}
+
+.heading span{
+  font-size: 3.5rem;
+  background:rgba(255, 165, 0,.2);
+  color:var(--blue);
+  border-radius: .5rem;
+  padding:.2rem 1rem;
+}
+
+.heading span.space{
+  background:none;
+}
+
+.btn{
+  display: inline-block;
+  margin-top: 1rem;
+  background:var(--blue);
+  color:#fff;
+  padding:.8rem 3rem;
+  border:.2rem solid var(--blue);
+  cursor: pointer;
+  font-size: 1.7rem;
+}
+
+.btn:hover{
+  background:rgba(255, 165, 0,.2);
+  color:var(--blue);
+}
+
+header{
+  position: fixed;
+  top:0; left: 0; right:0;
+  background:#333;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding:2rem 9%;
+}
+
+header .logo{
+  font-size: 2.5rem;
+  font-weight: bolder;
+  color:#fff;
+  text-transform: uppercase;
+}
+
+header .logo span{
+  color:var(--blue);
+}
+
+header .navbar a{
+  color:#fff;
+  font-size: 2rem;
+  margin:0 .8rem;
+}
+
+header .navbar a:hover{
+  color:var(--blue);
+}
+
+header .icons i{
+  font-size: 2.5rem;
+  color:#fff;
+  cursor: pointer;
+  margin-right: 2rem;
+}
+
+header .icons i:hover{
+  color:var(--blue);
+}
+
+header .search-bar-container{
+  position: absolute;
+  top:100%; left: 0; right:0;
+  padding:1.5rem 2rem;
+  background:#333;
+  border-top: .1rem solid rgba(255,255,255,.2);
+  display: flex;
+  align-items: center;
+  z-index: 1001;
+  clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+}
+
+header .search-bar-container.active{
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+}
+
+header .search-bar-container #search-bar{
+  width:100%;
+  padding:1rem;
+  text-transform: none;
+  color:#333;
+  font-size: 1.7rem;
+  border-radius: .5rem;
+}
+
+header .search-bar-container label{
+  color:#fff;
+  cursor: pointer;
+  font-size: 3rem;
+  margin-left: 1.5rem;
+}
+
+header .search-bar-container label:hover{
+  color:var(--blue);
+}
+
+.login-form-container{
+  position: fixed;
+  top:-120%; left: 0;
+  z-index: 10000;
+  min-height: 100vh;
+  width:100%;
+  background:rgba(0,0,0,.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-form-container.active{
+  top:0;
+}
+
+.login-form-container form{
+  margin:2rem;
+  padding:1.5rem 2rem;
+  border-radius: .5rem;
+  background:#fff;
+  width:50rem;
+}
+
+.login-form-container form h3{
+  font-size: 3rem;
+  color:#444;
+  text-transform: uppercase;
+  text-align: center;
+  padding:1rem 0;
+}
+
+.login-form-container form .box{
+  width:100%;
+  padding:1rem;
+  font-size: 1.7rem;
+  color:#333;
+  margin:.6rem 0;
+  border:.1rem solid rgba(0,0,0,.3);
+  text-transform: none;
+}
+
+.login-form-container form .box:focus{
+  border-color: var(--blue);;
+}
+
+.login-form-container form #remember{
+  margin:2rem 0;
+}
+
+.login-form-container form label{
+  font-size: 1.5rem;
+}
+
+.login-form-container form .btn{
+  display: block;
+  width:100%;
+}
+
+.login-form-container form p{
+  padding:.5rem 0;
+  font-size: 1.5rem;
+  color:#666;
+}
+
+.login-form-container form p a{
+  color:var(--blue);
+}
+
+.login-form-container form p a:hover{
+  color:#333;
+  text-decoration: underline;
+}
+
+.login-form-container #form-close #form-close2{
+  position: absolute;
+  top:2rem; right:3rem;
+  font-size: 5rem;
+  color:#fff;
+  cursor: pointer;
+}
+
+#menu-bar{
+  color:#fff;
+  border:.1rem solid #fff;
+  border-radius: .5rem;
+  font-size: 3rem;
+  padding:.5rem 1.2rem;
+  cursor: pointer;
+  display: none;
+}
+
+.home{
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-flow: column;
+  position: relative;
+  z-index: 0;
+}
+
+.home .content{
+  text-align: center;
+}
+
+.home .content h3{
+  font-size: 4.5rem;
+  color:#fff;
+  text-transform: uppercase;
+  text-shadow: 0 .3rem .5rem rgba(0,0,0,.1);
+}
+
+.home .content p{
+  font-size: 2.5rem;
+  color:#fff;
+  padding:.5rem 0;
+}
+
+.home .video-container video{
+  position: absolute;
+  top:0; left: 0;
+  z-index: -1;
+  height: 100%;
+  width:100%;
+  object-fit: cover;
+}
+
+.home .controls{
+  padding:1rem;
+  border-radius: 5rem;
+  background:rgba(0,0,0,.7);
+  position: relative;
+  top:10rem;
+}
+
+.home .controls .vid-btn{
+  height:2rem;
+  width:2rem;
+  display: inline-block;
+  border-radius: 50%;
+  background:#fff;
+  cursor: pointer;
+  margin:0 .5rem;
+}
+
+.home .controls .vid-btn.active{
+  background:var(--blue);
+}
+
+.book .row{
+  display: flex;
+  flex-wrap: wrap;
+  gap:1.5rem;
+  align-items: center;
+}
+
+.book .row .image{
+  flex:1 1 40rem;
+}
+
+.book .row .image img{
+  width:100%;
+}
+
+.book .row form{
+  flex:1 1 40rem;
+  padding:2rem;
+  box-shadow: 0 1rem 2rem rgba(0,0,0,.1);
+  border-radius: .5rem;
+}
+
+.book .row form .inputBox{
+  padding:.5rem 0;
+}
+
+.book .row form .inputBox input{
+  width:100%;
+  padding:1rem;
+  border:.1rem solid rgba(0,0,0,.1);
+  font-size: 1.7rem;
+  color:#333;
+  text-transform: none;
+}
+
+.book .row form .inputBox h3{
+  font-size: 2rem;
+  padding:1rem 0;
+  color:#666;
+}
+
+.packages .box-container{
+  display: flex;
+  flex-wrap: wrap;
+  gap:2rem;
+}
+
+.packages .box-container .box{
+  flex:1 1 30rem;
+  border-radius: .5rem;
+  overflow: hidden;
+  box-shadow: 0 1rem 2rem rgba(0,0,0,.1);
+}
+
+.packages .box-container .box img{
+  height: 25rem;
+  width:2rem;
+  object-fit: cover;
+}
+
+.packages .box-container .box .content{
+  padding:2rem;
+}
+
+.packages .box-container .box .content h3{
+  font-size:2rem;
+  color:#333;
+}
+
+.packages .box-container .box .content h3 i{
+  color:var(--blue);
+}
+
+.packages .box-container .box .content p{
+  font-size:1.7rem;
+  color:#666;
+  padding:1rem 0;
+}
+
+.packages .box-container .box .content .stars i{
+  font-size:1.7rem;
+  color:var(--blue);
+}
+
+.packages .box-container .box .content .price{
+  font-size: 2rem;
+  color:#333;
+  padding-top: 1rem;
+}
+
+.packages .box-container .box .content .price span{
+  color:#666;
+  font-size: 1.5rem;
+  text-decoration: line-through;
+}
+
+.services .box-container{
+  display: flex;
+  flex-wrap: wrap;
+  gap:1.5rem;
+}
+
+.services .box-container .box{
+  flex: 1 1 30rem;
+  border-radius: .5rem;
+  padding:1rem;
+  text-align: center;
+}
+
+.services .box-container .box i{
+  padding:1rem;
+  font-size: 5rem;
+  color:var(--blue);
+}
+
+.services .box-container .box h3{
+  font-size: 2.5rem;
+  color:#333;
+}
+
+.services .box-container .box p{
+  font-size: 1.5rem;
+  color:#666;
+  padding:1rem 0;
+}
+
+.services .box-container .box:hover{
+  box-shadow: 0 1rem 2rem rgba(0,0,0,.1);
+}
+
+.gallery .box-container{
+  display: flex;
+  flex-wrap: wrap;
+  gap:1.5rem;
+}
+
+.gallery .box-container .box{
+  overflow: hidden;
+  box-shadow: 0 1rem 2rem rgba(0,0,0,.1);
+  border:1rem solid #fff;
+  border-radius: .5rem;
+  flex:1 1 30rem;
+  height: 25rem;
+  position: relative;
+}
+
+.gallery .box-container .box img{
+  height: 100%;
+  width:100%;
+  object-fit: cover;
+}
+
+.gallery .box-container .box .content{
+  position: absolute;
+  top:-100%; left:0;
+  height: 100%;
+  width:100%;
+  text-align: center;
+  background:rgba(0,0,0,.7);
+  padding:2rem;
+  padding-top: 5rem;
+}
+
+.gallery .box-container .box:hover .content{
+  top:0;
+}
+
+.gallery .box-container .box .content h3{
+  font-size: 2.5rem;
+  color:var(--blue);
+}
+
+.gallery .box-container .box .content p{
+  font-size: 1.5rem;
+  color:#eee;
+  padding:.5rem 0;
+}
+
+.review .review-slider{
+  padding-bottom: 2rem;
+}
+
+.review .box{
+  padding:2rem;
+  text-align: center;
+  box-shadow: 0 1rem 2rem rgba(0,0,0,.1);
+  border-radius: .5rem;
+}
+
+.review .box img{
+  height:13rem;
+  width:13rem;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 1rem;
+}
+
+.review .box h3{
+  color:#333;
+  font-size: 2.5rem;
+}
+
+.review .box p{
+  color:#666;
+  font-size: 1.5rem;
+  padding:1rem 0;
+}
+
+.review .box .stars i{
+  color:var(--blue);
+  font-size: 1.7rem;
+}
+
+.contact .row{
+  display: flex;
+  flex-wrap: wrap;
+  gap:1.5rem;
+  align-items: center;
+}
+
+.contact .row .image{
+  flex:1 1 35rem;
+}
+
+.contact .row .image img{
+  width:100%;
+}
+
+.contact .row form{
+  flex:1 1 50rem;
+  padding:2rem;
+  box-shadow: 0 1rem 2rem rgba(0,0,0,.1);
+  border-radius: .5rem;
+}
+
+.contact .row form .inputBox{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.contact .row form .inputBox input, .contact .row form textarea{
+  width:49%;
+  margin:1rem 0;
+  padding:1rem;
+  font-size: 1.7rem;
+  color:#333;
+  background:#f7f7f7;
+  text-transform: none;
+}
+
+.contact .row form textarea{
+  height: 15rem;
+  resize: none;
+  width:100%;
+}
+
+.brand-container{
+  text-align: center;
+}
+
+.footer{
+  background:#333;
+}
+
+.footer .box-container{
+  display: flex;
+  flex-wrap: wrap;
+  gap:1.5rem;
+}
+
+.footer .box-container .box{
+  padding:1rem 0;
+  flex:1 1 25rem;
+}
+
+.footer .box-container .box h3{
+  font-size: 2.5rem;
+  padding:.7rem 0;
+  color:#fff;
+}
+
+.footer .box-container .box p{
+  font-size: 1.5rem;
+  padding:.7rem 0;
+  color:#eee;
+}
+
+.footer .box-container .box a{
+  display: block;
+  font-size: 1.5rem;
+  padding:.7rem 0;
+  color:#eee;
+}
+
+.footer .box-container .box a:hover{
+  color:var(--blue);
+  text-decoration: underline;
+}
+
+.footer .credit{
+  text-align: center;
+  padding:2rem 1rem;
+  margin-top: 1rem;
+  font-size: 2rem;
+  font-weight: normal;
+  color:#fff;
+  border-top: .1rem solid rgba(255,255,255,.2);
+}
+
+.footer .credit span{
+  color:var(--blue);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Media queries  */
+
+@media (max-width:1200px){
+
+  html{
+    font-size: 55%;
+  }
+
+}
+
+@media (max-width:991px){
+
+  header{
+    padding:2rem;
+  }
+
+  section{
+    padding:2rem;
+  }
+
+}
+
+@media (max-width:768px){
+
+  #menu-bar {
+    display: initial;
+  }
+
+  header .navbar{
+    position: absolute;
+    top:100%; right:0; left: 0;
+    background: #333;
+    border-top: .1rem solid rgba(255,255,255,.2);
+    padding:1rem 2rem;
+    clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+  }
+
+  header .navbar.active{
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+
+  header .navbar a{
+    display: block;
+    border-radius: .5rem;
+    padding:1.5rem;
+    margin:1.5rem 0;    
+    background:#222;
+  }
+
+}
+
+@media (max-width:450px){
+
+  html{
+    font-size: 50%;
+  }
+
+  .heading span{
+    font-size: 2.5rem;
+  }
+
+  .contact .row form .inputBox input{
+    width:100%;
+  }
+
+}
+</style>
+<body>
+  <header>
+        <div id="menu-bar" class="fas fa-bars"></div>
+        <a href="/" class="logo"><span>ATN</span>Toy Manager</a>
+            <nav class="navbar">
+            <a href="/">Home</a>
+            <a href="/customer">Manage Accounts</a>
+            <a href="/product">Manage Products</a>
+            </nav>
+        <div class="icons">
+                <i class="fas fa-search" id="search-btn"></i>
+                <i class="fas fa-user" id="login-btn"></i>
+        </div>
+  </header>
+  {{{body}}}
+ <section class="footer">
+
+    <div class="box-container">
+
+        <div class="box">
+            <h3>About ATN Toys</h3>
+            <p>ATN is a Vietnamese company which selling toys to teenagers in many provinces all over Vietnam. ATN has a revenue over 700.000 dollars per year.</p>
+        </div>
+        <div class="box">
+            <h3>branch locations</h3>
+            <p>Việt Nam</p>
+        </div>
+        <div class="box">
+            <h3>Quick links</h3>
+            <a href="/">Home</a>
+            <a href="/customer">Manage Accounts</a>
+            <a href="/product">Manage Products</a>
+        </div>
+    </div>
+    <h1 class="credit"> Created by <span> hungbq2003 </span> | All rights reserved. </h1>
+</section>
+</body>
+</html>
+
+In summary, these code snippets provide a basic structure for the ATN Toy Manager cloud computing website. These codes define styles for the webpage, handle errors, and include functionalities like a navigation bar and search bar. However, it is important to note that the index.html seems to lack the actual content displayed on the webpage. This content likely comes from separate views that are inserted into the placeholder section.
+
+VI - app.js
+1. Initial Setup:
++ Import Modules: Starting by importing necessary modules, such as: express for building the web server, http-errors for handling errors, path for manipulating file paths, body-parser for parsing form data, mongoose for interacting with the MongoDB database, and others for functionalities like cookies, logging, and serving static files.
++ Database Connection: Establish a connection to the MongoDB database specified by the database variable. Upon successful connection, a message is logged in the console.
+
+2. Application Configuration:
++ View Engine: The application sets the view engine to Handlebars (hbs) and specifies the directory which containing the view templates in (views).
++ Middleware:
+logger('dev') - enables request and response logging for development purposes
+express.json() - parses incoming JSON data in the request body
+express.urlencoded({ extended: false }) - parses incoming form data retrieved from HTML forms. (NOTE: extended: false limits parsing to simple values)
+cookieParser(): Enables handling of cookies sent from the client.
+express.static(path.join(__dirname, 'public')): Serves static files such as CSS, JavaScript, and images from "public" directory.
+
+3. Routing:
++ The application imports the three routers - indexRouter, productRouter, and customerRouter. These three routers likely define routes for handling different functionalities of the application, such as managing products, customers, and the main landing page.
+
++ The imported routers are mounted on specific paths:
+/ - requests to the root path that are handled by indexRouter
+/product - requests to paths starting with /product are handled by productRouter. (Possibly handles product-related operations)
+/customer - requests to paths starting with /customer are handled by customerRouter. (Possibly handles customer-related operations)
+4. Error Handling:
+
++ "404 Not found" error: A 404 error shows that the page could not be found. In this ATN Toy Manager cloud computing system, it is defined as middleware to catch requests that don't match any defined routes. It creates a 404 Not Found error and passes it to the next middleware.
++ Error Handler: Another function is defined as middleware to handle any errors that occur during application execution. It extracts the error message and sets it to a variable. Depending on the development environment, it might also include additional error details and then renders the error.hbs template with the extracted error information.
+
+5. Server Startup:
+The code retrieves the port number from an environment variable (process.env.PORT) or defaults to port 3001 if the environment variable is not set.
+An Express server is created and starts listening on the specified port.
+Once the server starts successfully, a message is logged in the console.
+
+Overall, the app.js file serves as the foundation for the ATN Toy Manager application. It configures the server, connects to the database, defines routing for different functionalities, and handles errors.
+
+app.js Code:
+var createError = require('http-errors');
+var express = require('express');
+var path = require('path');
+var cookieParser = require('cookie-parser');
+var logger = require('morgan');
+var favicon = require('serve-favicon');
+
+var indexRouter = require('./routes/index');
+var productRouter = require('./routes/product');
+var customerRouter = require('./routes/customer');
+
+var app = express();
+//Import body-parser library to get input from client
+var bodyParser = require('body-parser');
+//Config body-parser library
+app.use(bodyParser.urlencoded({ extended: false }));
+
+//Import Mongoose library
+var mongoose = require('mongoose');
+//Config database connection and Database name
+var database = "mongodb+srv://hungbqgch211022:3fF63V8fNmRCV60P@cluster0.6qptrp7.mongodb.net/ATN";
+
+//Connect to Database
+mongoose.connect(database)
+    .then(() => console.log("Successfully connected to the DB."))
+    .catch((err) => console.error("Failed to connect to DB. Error: " + err));
+
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'hbs');
+
+app.use(logger('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.use('/', indexRouter);
+app.use('/product', productRouter);
+app.use('/customer', customerRouter);
+
+// Catch 404 and forward to error handler
+app.use(function(req, res, next) {
+  next(createError(404));
+});
+
+// error handler
+app.use(function(err, req, res, next) {
+  // Set locals, only providing error in development
+  res.locals.message = err.message;
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+  // Error page render
+  res.status(err.status || 500);
+  res.render('error');
+});
+
+//Update port to deploy it to Render cloud
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}.`);
+});
+
+module.exports = app;
